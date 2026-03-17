@@ -328,16 +328,42 @@
       return String(name).replace(/[^A-Za-z0-9_-]/g, "_");
     }
 
-    function extractVin(text) {
-      const cleaned = String(text || "").replace(/\s+/g, " ");
+    function isValidVin(vin) {
+      return /^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
+    }
 
-      const direct = cleaned.match(/\bVIN\s*[:#-]?\s*([A-HJ-NPR-Z0-9]{17})\b/i);
-      if (direct && direct[1]) return direct[1].toUpperCase();
+    function extractVinFromStrings(strings) {
+      const joined = strings.join(" ");
+      const joinedCompact = joined.replace(/\s+/g, " ").trim();
 
-      const all = cleaned.match(/\b[A-HJ-NPR-Z0-9]{17}\b/g) || [];
-      for (const candidate of all) {
+      const directMatch = joinedCompact.match(/\bVIN\s*[:#-]?\s*([A-HJ-NPR-Z0-9]{17})\b/i);
+      if (directMatch && directMatch[1] && isValidVin(directMatch[1].toUpperCase())) {
+        return directMatch[1].toUpperCase();
+      }
+
+      const all17 = joinedCompact.match(/\b[A-HJ-NPR-Z0-9]{17}\b/g) || [];
+      for (const candidate of all17) {
         const vin = candidate.toUpperCase();
-        if (!/[IOQ]/.test(vin)) return vin;
+        if (isValidVin(vin)) return vin;
+      }
+
+      const flatAlnum = strings
+        .join("")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "");
+
+      const vinIndex = flatAlnum.indexOf("VIN");
+      if (vinIndex !== -1) {
+        const afterVin = flatAlnum.slice(vinIndex + 3);
+        for (let i = 0; i <= afterVin.length - 17; i++) {
+          const candidate = afterVin.slice(i, i + 17);
+          if (isValidVin(candidate)) return candidate;
+        }
+      }
+
+      for (let i = 0; i <= flatAlnum.length - 17; i++) {
+        const candidate = flatAlnum.slice(i, i + 17);
+        if (isValidVin(candidate)) return candidate;
       }
 
       return null;
@@ -381,19 +407,25 @@
       return new Uint8Array(ab);
     }
 
-    async function getPdfTextPerPage(uint8) {
+    async function getPdfPageData(uint8) {
       const loadingTask = pdfjsLib.getDocument({ data: uint8.slice() });
       const pdf = await loadingTask.promise;
-      const texts = [];
+      const pages = [];
 
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        const text = content.items.map(item => item.str || "").join(" ");
-        texts.push(text);
+
+        const rawStrings = content.items.map(item => item.str || "");
+        const joinedText = rawStrings.join(" ");
+
+        pages.push({
+          rawStrings,
+          joinedText
+        });
       }
 
-      return texts;
+      return pages;
     }
 
     browseBtn.addEventListener("click", function(e) {
@@ -436,11 +468,10 @@
       try {
         const sourceBytes = await fileToUint8(selectedFile);
 
-        // Separate copies prevent detached ArrayBuffer errors.
         const pdfJsBytes = sourceBytes.slice();
         const pdfLibBytes = sourceBytes.slice();
 
-        const pageTexts = await getPdfTextPerPage(pdfJsBytes);
+        const pageData = await getPdfPageData(pdfJsBytes);
         const srcPdf = await PDFLib.PDFDocument.load(pdfLibBytes.slice());
 
         const pageCount = srcPdf.getPageCount();
@@ -450,7 +481,7 @@
         for (let i = 0; i < pageCount; i++) {
           setStatus("Processing page " + (i + 1) + " of " + pageCount + "...");
 
-          const vin = extractVin(pageTexts[i] || "");
+          const vin = extractVinFromStrings(pageData[i].rawStrings);
           let baseName = vin ? sanitizeFileName(vin) : ("page_" + (i + 1));
 
           usedNames[baseName] = (usedNames[baseName] || 0) + 1;
