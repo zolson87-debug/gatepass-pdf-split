@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gate Pass Splitter</title>
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#fff; --text:#17202a; --muted:#667085; --line:#dbe3ef;
+      --accent:#2563eb; --accent-soft:#eff6ff; --success:#0f9f6e; --danger:#c0392b;
+      --shadow:0 12px 30px rgba(16,24,40,.08); --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);color:var(--text)}
+    .wrap{max-width:980px;margin:40px auto;padding:0 20px 40px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+    .header{padding:28px 28px 14px}
+    h1{margin:0 0 8px;font-size:30px;line-height:1.1}
+    .sub{color:var(--muted);font-size:15px;line-height:1.6;max-width:760px}
+    .dropzone{margin:18px 28px 10px;border:2px dashed #9bb7ea;background:var(--accent-soft);border-radius:20px;min-height:240px;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;transition:.2s ease;cursor:pointer}
+    .dropzone.dragover{border-color:var(--accent);transform:scale(1.01);background:#e9f2ff}
+    .drop-inner{max-width:540px}
+    .drop-title{font-size:24px;font-weight:700;margin-bottom:8px}
+    .drop-text{color:var(--muted);line-height:1.6;margin-bottom:16px}
+    .btn{appearance:none;border:none;background:var(--accent);color:#fff;padding:12px 18px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 6px 18px rgba(37,99,235,.18)}
+    .btn.secondary{background:#fff;color:var(--text);border:1px solid var(--line);box-shadow:none}
+    .actions,.results,.notes{padding:18px 28px 28px}
+    .actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);font-size:14px}
+    .status{margin-left:auto;font-size:14px;color:var(--muted)}
+    .status.ok{color:var(--success)} .status.err{color:var(--danger)}
+    .results{padding-top:6px}
+    table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
+    th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+    th{background:#f8fafc;font-weight:700} tr:last-child td{border-bottom:none}
+    .notes{color:var(--muted);font-size:14px;line-height:1.7;border-top:1px solid var(--line);background:#fcfdff}
+    .hidden{display:none !important} input[type="file"]{display:none}
+    .small{font-size:12px;color:var(--muted)} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    @media (max-width:720px){
+      .header,.actions,.results,.notes,.dropzone{margin-left:18px;margin-right:18px;padding-left:18px;padding-right:18px}
+      .drop-title{font-size:22px} h1{font-size:26px} .status{width:100%;margin-left:0}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="header">
+        <h1>Gate Pass Splitter</h1>
+        <div class="sub">
+          Upload a multi-page gate pass PDF. Each page will be split into its own PDF and renamed using the VIN found on that page.
+        </div>
+      </div>
+
+      <label class="dropzone" id="dropzone" for="fileInput">
+        <div class="drop-inner">
+          <div class="drop-title">Drag and drop a PDF here</div>
+          <div class="drop-text">or click to browse for a multi-page gate pass PDF</div>
+          <button class="btn" type="button" id="browseBtn">Choose PDF</button>
+          <div class="small" style="margin-top:14px">Expected text includes <span class="mono">VIN 1N4BL4DV5SN388691</span></div>
+        </div>
+      </label>
+
+      <div class="actions">
+        <input id="fileInput" type="file" accept="application/pdf,.pdf" />
+        <div class="pill" id="filePill">No file selected</div>
+        <button class="btn hidden" id="processBtn" type="button">Split and Rename</button>
+        <button class="btn secondary hidden" id="downloadBtn" type="button">Download ZIP</button>
+        <div class="status" id="status">Waiting for file</div>
+      </div>
+
+      <div class="results hidden" id="resultsWrap">
+        <table>
+          <thead>
+            <tr><th style="width:80px">Page</th><th style="width:240px">VIN</th><th>Output file</th></tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="notes">
+        This page runs in the browser. If a VIN cannot be detected on a page, the file still gets created with a fallback filename like <span class="mono">page_3.pdf</span>.
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+    const dropzone = document.getElementById("dropzone");
+    const fileInput = document.getElementById("fileInput");
+    const filePill = document.getElementById("filePill");
+    const statusEl = document.getElementById("status");
+    const processBtn = document.getElementById("processBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const resultsWrap = document.getElementById("resultsWrap");
+    const resultsBody = document.getElementById("resultsBody");
+    const browseBtn = document.getElementById("browseBtn");
+
+    let selectedFile = null;
+    let zipBlob = null;
+
+    function setStatus(text, kind) {
+      statusEl.textContent = text;
+      statusEl.className = "status" + (kind ? " " + kind : "");
+    }
+
+    function sanitizeFileName(name) {
+      return String(name).replace(/[^A-Za-z0-9_-]/g, "_");
+    }
+
+    function extractVin(text) {
+      const cleaned = String(text || "").replace(/\s+/g, " ");
+      const direct = cleaned.match(/\bVIN\s*[:#-]?\s*([A-HJ-NPR-Z0-9]{17})\b/i);
+      if (direct && direct[1]) return direct[1].toUpperCase();
+
+      const all = cleaned.match(/\b[A-HJ-NPR-Z0-9]{17}\b/g) || [];
+      for (const candidate of all) {
+        const vin = candidate.toUpperCase();
+        if (!/[IOQ]/.test(vin)) return vin;
+      }
+      return null;
+    }
+
+    function resetResults() {
+      zipBlob = null;
+      resultsBody.innerHTML = "";
+      resultsWrap.classList.add("hidden");
+      downloadBtn.classList.add("hidden");
+    }
+
+    function setFile(file) {
+      selectedFile = file;
+      resetResults();
+
+      if (!file) {
+        filePill.textContent = "No file selected";
+        processBtn.classList.add("hidden");
+        setStatus("Waiting for file");
+        return;
+      }
+
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      if (!isPdf) {
+        filePill.textContent = "Unsupported file type";
+        processBtn.classList.add("hidden");
+        setStatus("Please choose a PDF file", "err");
+        return;
+      }
+
+      filePill.textContent = file.name;
+      processBtn.classList.remove("hidden");
+      setStatus("Ready to process", "ok");
+    }
+
+    browseBtn.addEventListener("click", function(e) {
+      e.preventDefault();
+      fileInput.click();
+    });
+
+    fileInput.addEventListener("change", function(e) {
+      setFile((e.target.files && e.target.files[0]) || null);
+    });
+
+    ["dragenter", "dragover"].forEach(function(evt) {
+      dropzone.addEventListener(evt, function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(function(evt) {
+      dropzone.addEventListener(evt, function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove("dragover");
+      });
+    });
+
+    dropzone.addEventListener("drop", function(e) {
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) setFile(file);
+    });
+
+    async function getPdfTextPerPage(arrayBuffer) {
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      const texts = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const text = content.items.map(function(item) { return item.str || ""; }).join(" ");
+        texts.push(text);
+      }
+      return texts;
+    }
+
+    processBtn.addEventListener("click", async function() {
+      if (!selectedFile) return;
+
+      processBtn.disabled = true;
+      resetResults();
+      setStatus("Reading PDF...");
+
+      try {
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        const pageTexts = await getPdfTextPerPage(arrayBuffer);
+        const srcPdf = await PDFLib.PDFDocument.load(arrayBuffer);
+        const pageCount = srcPdf.getPageCount();
+        const zip = new JSZip();
+        const usedNames = Object.create(null);
+
+        for (let i = 0; i < pageCount; i++) {
+          setStatus("Processing page " + (i + 1) + " of " + pageCount + "...");
+
+          const vin = extractVin(pageTexts[i] || "");
+          let baseName = vin ? sanitizeFileName(vin) : ("page_" + (i + 1));
+
+          usedNames[baseName] = (usedNames[baseName] || 0) + 1;
+          const suffix = usedNames[baseName] > 1 ? "_" + usedNames[baseName] : "";
+          const finalName = baseName + suffix + ".pdf";
+
+          const outPdf = await PDFLib.PDFDocument.create();
+          const copiedPages = await outPdf.copyPages(srcPdf, [i]);
+          outPdf.addPage(copiedPages[0]);
+          const outBytes = await outPdf.save();
+          zip.file(finalName, outBytes);
+
+          const row = document.createElement("tr");
+          row.innerHTML =
+            "<td>" + (i + 1) + "</td>" +
+            "<td>" + (vin ? vin : '<span class=\"small\">Not found</span>') + "</td>" +
+            "<td>" + finalName + "</td>";
+          resultsBody.appendChild(row);
+        }
+
+        setStatus("Building ZIP...");
+        zipBlob = await zip.generateAsync({ type: "blob" });
+        resultsWrap.classList.remove("hidden");
+        downloadBtn.classList.remove("hidden");
+        setStatus("Done. Created " + pageCount + " files.", "ok");
+      } catch (err) {
+        console.error(err);
+        let msg = "Could not process this PDF.";
+        if (location.protocol === "file:") {
+          msg += " This usually happens when the HTML is opened by double-clicking it. Host it on a web page or simple local server instead.";
+        } else {
+          msg += " Please try another file.";
+        }
+        setStatus(msg, "err");
+      } finally {
+        processBtn.disabled = false;
+      }
+    });
+
+    downloadBtn.addEventListener("click", function() {
+      if (!zipBlob) return;
+      const original = (selectedFile && selectedFile.name ? selectedFile.name : "gatepasses").replace(/\.pdf$/i, "");
+      const a = document.createElement("a");
+      const url = URL.createObjectURL(zipBlob);
+      a.href = url;
+      a.download = sanitizeFileName(original) + "_split_by_vin.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+    });
+  </script>
+</body>
+</html>
