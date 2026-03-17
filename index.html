@@ -6,36 +6,208 @@
   <title>Gate Pass Splitter</title>
   <style>
     :root{
-      --bg:#f6f8fb; --card:#fff; --text:#17202a; --muted:#667085; --line:#dbe3ef;
-      --accent:#2563eb; --accent-soft:#eff6ff; --success:#0f9f6e; --danger:#c0392b;
-      --shadow:0 12px 30px rgba(16,24,40,.08); --radius:18px;
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --text:#17202a;
+      --muted:#667085;
+      --line:#dbe3ef;
+      --accent:#2563eb;
+      --accent-soft:#eff6ff;
+      --success:#0f9f6e;
+      --danger:#c0392b;
+      --shadow:0 12px 30px rgba(16,24,40,.08);
+      --radius:18px;
     }
+
     *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);color:var(--text)}
-    .wrap{max-width:980px;margin:40px auto;padding:0 20px 40px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
-    .header{padding:28px 28px 14px}
-    h1{margin:0 0 8px;font-size:30px;line-height:1.1}
-    .sub{color:var(--muted);font-size:15px;line-height:1.6;max-width:760px}
-    .dropzone{margin:18px 28px 10px;border:2px dashed #9bb7ea;background:var(--accent-soft);border-radius:20px;min-height:240px;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;transition:.2s ease;cursor:pointer}
-    .dropzone.dragover{border-color:var(--accent);transform:scale(1.01);background:#e9f2ff}
-    .drop-inner{max-width:540px}
-    .drop-title{font-size:24px;font-weight:700;margin-bottom:8px}
-    .drop-text{color:var(--muted);line-height:1.6;margin-bottom:16px}
-    .btn{appearance:none;border:none;background:var(--accent);color:#fff;padding:12px 18px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 6px 18px rgba(37,99,235,.18)}
-    .btn.secondary{background:#fff;color:var(--text);border:1px solid var(--line);box-shadow:none}
-    .actions,.results,.notes{padding:18px 28px 28px}
-    .actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);font-size:14px}
-    .status{margin-left:auto;font-size:14px;color:var(--muted)}
-    .status.ok{color:var(--success)} .status.err{color:var(--danger)}
-    .results{padding-top:6px}
-    table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
-    th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
-    th{background:#f8fafc;font-weight:700} tr:last-child td{border-bottom:none}
-    .notes{color:var(--muted);font-size:14px;line-height:1.7;border-top:1px solid var(--line);background:#fcfdff}
-    .hidden{display:none !important} input[type="file"]{display:none}
-    .small{font-size:12px;color:var(--muted)} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+    body{
+      margin:0;
+      font-family:Inter,Segoe UI,Arial,sans-serif;
+      background:linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);
+      color:var(--text);
+    }
+
+    .wrap{
+      max-width:980px;
+      margin:40px auto;
+      padding:0 20px 40px;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .header{
+      padding:28px 28px 14px;
+    }
+
+    h1{
+      margin:0 0 8px;
+      font-size:30px;
+      line-height:1.1;
+    }
+
+    .sub{
+      color:var(--muted);
+      font-size:15px;
+      line-height:1.6;
+      max-width:760px;
+    }
+
+    .dropzone{
+      margin:18px 28px 10px;
+      border:2px dashed #9bb7ea;
+      background:var(--accent-soft);
+      border-radius:20px;
+      min-height:240px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:24px;
+      transition:.2s ease;
+      cursor:pointer;
+    }
+
+    .dropzone.dragover{
+      border-color:var(--accent);
+      transform:scale(1.01);
+      background:#e9f2ff;
+    }
+
+    .drop-inner{
+      max-width:540px;
+    }
+
+    .drop-title{
+      font-size:24px;
+      font-weight:700;
+      margin-bottom:8px;
+    }
+
+    .drop-text{
+      color:var(--muted);
+      line-height:1.6;
+      margin-bottom:16px;
+    }
+
+    .btn{
+      appearance:none;
+      border:none;
+      background:var(--accent);
+      color:#fff;
+      padding:12px 18px;
+      border-radius:12px;
+      font-size:15px;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow:0 6px 18px rgba(37,99,235,.18);
+    }
+
+    .btn:disabled{
+      opacity:.7;
+      cursor:not-allowed;
+    }
+
+    .btn.secondary{
+      background:#fff;
+      color:var(--text);
+      border:1px solid var(--line);
+      box-shadow:none;
+    }
+
+    .actions, .results, .notes{
+      padding:18px 28px 28px;
+    }
+
+    .actions{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background:#fff;
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .status{
+      margin-left:auto;
+      font-size:14px;
+      color:var(--muted);
+    }
+
+    .status.ok{color:var(--success)}
+    .status.err{color:var(--danger)}
+
+    .results{
+      padding-top:6px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      border:1px solid var(--line);
+      border-radius:16px;
+      overflow:hidden;
+      background:#fff;
+    }
+
+    th,td{
+      text-align:left;
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      font-size:14px;
+      vertical-align:top;
+    }
+
+    th{
+      background:#f8fafc;
+      font-weight:700;
+    }
+
+    tr:last-child td{
+      border-bottom:none;
+    }
+
+    .notes{
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.7;
+      border-top:1px solid var(--line);
+      background:#fcfdff;
+    }
+
+    .hidden{
+      display:none !important;
+    }
+
+    input[type="file"]{
+      display:none;
+    }
+
+    .small{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .mono{
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    }
+
     .error-box{
       margin:0 28px 24px;
       padding:14px 16px;
@@ -47,9 +219,21 @@
       white-space:pre-wrap;
       word-break:break-word;
     }
+
     @media (max-width:720px){
-      .header,.actions,.results,.notes,.dropzone,.error-box{margin-left:18px;margin-right:18px;padding-left:18px;padding-right:18px}
-      .drop-title{font-size:22px} h1{font-size:26px} .status{width:100%;margin-left:0}
+      .header,.actions,.results,.notes,.dropzone,.error-box{
+        margin-left:18px;
+        margin-right:18px;
+        padding-left:18px;
+        padding-right:18px;
+      }
+
+      .drop-title{font-size:22px}
+      h1{font-size:26px}
+      .status{
+        width:100%;
+        margin-left:0;
+      }
     }
   </style>
 </head>
@@ -68,7 +252,9 @@
           <div class="drop-title">Drag and drop a PDF here</div>
           <div class="drop-text">or click to browse for a multi-page gate pass PDF</div>
           <button class="btn" type="button" id="browseBtn">Choose PDF</button>
-          <div class="small" style="margin-top:14px">Expected text includes <span class="mono">VIN 1N4BL4DV5SN388691</span></div>
+          <div class="small" style="margin-top:14px">
+            Expected text includes <span class="mono">VIN 1N4BL4DV5SN388691</span>
+          </div>
         </div>
       </label>
 
@@ -85,7 +271,11 @@
       <div class="results hidden" id="resultsWrap">
         <table>
           <thead>
-            <tr><th style="width:80px">Page</th><th style="width:240px">VIN</th><th>Output file</th></tr>
+            <tr>
+              <th style="width:80px">Page</th>
+              <th style="width:240px">VIN</th>
+              <th>Output file</th>
+            </tr>
           </thead>
           <tbody id="resultsBody"></tbody>
         </table>
@@ -102,7 +292,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
     const dropzone = document.getElementById("dropzone");
     const fileInput = document.getElementById("fileInput");
@@ -139,6 +330,7 @@
 
     function extractVin(text) {
       const cleaned = String(text || "").replace(/\s+/g, " ");
+
       const direct = cleaned.match(/\bVIN\s*[:#-]?\s*([A-HJ-NPR-Z0-9]{17})\b/i);
       if (direct && direct[1]) return direct[1].toUpperCase();
 
@@ -147,6 +339,7 @@
         const vin = candidate.toUpperCase();
         if (!/[IOQ]/.test(vin)) return vin;
       }
+
       return null;
     }
 
@@ -170,6 +363,7 @@
       }
 
       const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
       if (!isPdf) {
         filePill.textContent = "Unsupported file type";
         processBtn.classList.add("hidden");
@@ -180,6 +374,26 @@
       filePill.textContent = file.name;
       processBtn.classList.remove("hidden");
       setStatus("Ready to process", "ok");
+    }
+
+    async function fileToUint8(file) {
+      const ab = await file.arrayBuffer();
+      return new Uint8Array(ab);
+    }
+
+    async function getPdfTextPerPage(uint8) {
+      const loadingTask = pdfjsLib.getDocument({ data: uint8.slice() });
+      const pdf = await loadingTask.promise;
+      const texts = [];
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const text = content.items.map(item => item.str || "").join(" ");
+        texts.push(text);
+      }
+
+      return texts;
     }
 
     browseBtn.addEventListener("click", function(e) {
@@ -212,20 +426,6 @@
       if (file) setFile(file);
     });
 
-    async function getPdfTextPerPage(arrayBuffer) {
-      const uint8 = new Uint8Array(arrayBuffer);
-      const loadingTask = pdfjsLib.getDocument({ data: uint8 });
-      const pdf = await loadingTask.promise;
-      const texts = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const text = content.items.map(function(item) { return item.str || ""; }).join(" ");
-        texts.push(text);
-      }
-      return texts;
-    }
-
     processBtn.addEventListener("click", async function() {
       if (!selectedFile) return;
 
@@ -234,9 +434,15 @@
       setStatus("Reading PDF...");
 
       try {
-        const arrayBuffer = await selectedFile.arrayBuffer();
-        const pageTexts = await getPdfTextPerPage(arrayBuffer);
-        const srcPdf = await PDFLib.PDFDocument.load(arrayBuffer);
+        const sourceBytes = await fileToUint8(selectedFile);
+
+        // Separate copies prevent detached ArrayBuffer errors.
+        const pdfJsBytes = sourceBytes.slice();
+        const pdfLibBytes = sourceBytes.slice();
+
+        const pageTexts = await getPdfTextPerPage(pdfJsBytes);
+        const srcPdf = await PDFLib.PDFDocument.load(pdfLibBytes.slice());
+
         const pageCount = srcPdf.getPageCount();
         const zip = new JSZip();
         const usedNames = Object.create(null);
@@ -254,6 +460,7 @@
           const outPdf = await PDFLib.PDFDocument.create();
           const copiedPages = await outPdf.copyPages(srcPdf, [i]);
           outPdf.addPage(copiedPages[0]);
+
           const outBytes = await outPdf.save();
           zip.file(finalName, outBytes);
 
@@ -267,12 +474,16 @@
 
         setStatus("Building ZIP...");
         zipBlob = await zip.generateAsync({ type: "blob" });
+
         resultsWrap.classList.remove("hidden");
         downloadBtn.classList.remove("hidden");
         setStatus("Done. Created " + pageCount + " files.", "ok");
       } catch (err) {
         console.error(err);
-        const detail = (err && (err.message || err.toString())) ? (err.message || err.toString()) : "Unknown error";
+        const detail = (err && (err.message || err.toString()))
+          ? (err.message || err.toString())
+          : "Unknown error";
+
         setStatus("Could not process this PDF.", "err");
         showError("Processing error details:\n" + detail);
       } finally {
@@ -282,7 +493,10 @@
 
     downloadBtn.addEventListener("click", function() {
       if (!zipBlob) return;
-      const original = (selectedFile && selectedFile.name ? selectedFile.name : "gatepasses").replace(/\.pdf$/i, "");
+
+      const original = (selectedFile && selectedFile.name ? selectedFile.name : "gatepasses")
+        .replace(/\.pdf$/i, "");
+
       const a = document.createElement("a");
       const url = URL.createObjectURL(zipBlob);
       a.href = url;
@@ -290,7 +504,10 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+
+      setTimeout(function() {
+        URL.revokeObjectURL(url);
+      }, 3000);
     });
   </script>
 </body>
